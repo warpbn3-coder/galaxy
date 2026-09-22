@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>Galaxy of Love 3D</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body {
+    width:100%; height:100%; overflow:hidden;
+    background:#000; color:#fff;
+    font-family:'Courier New', monospace;
+    touch-action:none;
+  }
+  #app { position:fixed; inset:0; }
+  canvas { display:block; }
+
+  .hidden { display:none !important; }
+
+  /* POPUP */
+  #popup {
+    position:fixed; inset:0;
+    background:rgba(0,0,0,0.94);
+    display:flex; align-items:center; justify-content:center;
+    z-index:200;
+  }
+  .popup-box {
+    width:88%; max-width:400px;
+    padding:28px 22px;
+    border:1px solid rgba(255,80,160,0.6);
+    border-radius:16px;
+    background:linear-gradient(145deg, rgba(30,0,20,0.98), rgba(10,0,30,0.98));
+    box-shadow:0 0 60px rgba(255,20,100,0.5);
+    text-align:center;
+  }
+  .popup-title {
+    color:#ff5fa2; font-size:20px; letter-spacing:4px;
+    margin-bottom:6px; text-shadow:0 0 20px rgba(255,80,160,0.9);
+  }
+  .popup-sub {
+    color:rgba(255,150,200,0.7); font-size:11px;
+    letter-spacing:2px; margin-bottom:20px;
+  }
+  .popup-lock {
+    font-size:44px; margin:10px 0 18px;
+    filter:drop-shadow(0 0 20px rgba(255,80,160,0.8));
+    animation:lockPulse 2s ease-in-out infinite;
+  }
+  @keyframes lockPulse {
+    0%,100% { transform:scale(1); }
+    50% { transform:scale(1.1); }
+  }
+  .popup-btn {
+    width:100%; padding:14px; margin-top:6px;
+    border:2px solid #ff1474; border-radius:50px;
+    background:rgba(255,20,100,0.15); color:#ff5fa2;
+    font-family:inherit; font-size:14px; font-weight:700;
+    letter-spacing:3px; cursor:pointer;
+    text-shadow:0 0 10px rgba(255,80,160,0.8);
+    transition:all 0.3s ease;
+  }
+  .popup-btn:hover { background:rgba(255,20,100,0.4); color:#fff; }
+
+  /* GLITCH */
+  #glitchOverlay {
+    position:fixed; inset:0; background:#000;
+    z-index:300; display:flex; align-items:center;
+    justify-content:center; flex-direction:column;
+    font-family:'Courier New', monospace; color:#ff2b4a;
+  }
+  .glitch-code {
+    font-size:64px; font-weight:700; letter-spacing:6px;
+    text-shadow:2px 0 #00fff9, -2px 0 #ff00a8, 0 0 30px rgba(255,0,80,0.9);
+    animation:glitchShake 0.15s infinite;
+  }
+  .glitch-text {
+    font-size:13px; letter-spacing:3px;
+    margin-top:10px; color:#ff5fa2;
+  }
+  .glitch-bar {
+    width:60%; height:2px; background:#ff2b4a;
+    margin-top:18px; box-shadow:0 0 20px #ff2b4a;
+    animation:barPulse 0.3s infinite alternate;
+  }
+  @keyframes glitchShake {
+    0% { transform:translate(0,0) skew(0); }
+    50% { transform:translate(2px,-1px) skew(1deg); }
+    100% { transform:translate(-1px,2px) skew(-0.5deg); }
+  }
+  @keyframes barPulse {
+    from { opacity:0.4; }
+    to { opacity:1; }
+  }
+  .scanline {
+    position:fixed; inset:0;
+    background:repeating-linear-gradient(0deg,
+      rgba(255,20,80,0.08) 0px, rgba(255,20,80,0.08) 1px,
+      transparent 1px, transparent 3px);
+    pointer-events:none; z-index:310;
+  }
+
+  /* NAV */
+  #navHint {
+    position:fixed; bottom:18px; left:50%;
+    transform:translateX(-50%);
+    color:rgba(255,150,200,0.75);
+    font-size:11px; letter-spacing:3px;
+    z-index:50; pointer-events:none;
+    text-align:center; opacity:0;
+    transition:opacity 0.5s ease;
+    white-space:nowrap;
+  }
+  #navHint.show { opacity:1; }
+  #navHint .arrow {
+    display:inline-block;
+    animation:arrowBounce 1.2s ease-in-out infinite;
+  }
+  @keyframes arrowBounce {
+    0%,100% { transform:translateX(0); }
+    50% { transform:translateX(8px); }
+  }
+
+  #theme3Title {
+    position:fixed; top:14%; left:50%;
+    transform:translateX(-50%);
+    color:#ff5fa2; font-size:28px; letter-spacing:7px;
+    text-align:center; z-index:40; opacity:0;
+    pointer-events:none;
+    text-shadow:0 0 30px rgba(255,80,160,0.9);
+    transition:opacity 1s ease;
+  }
+  #theme3Title.show { opacity:1; }
+
+  #dots {
+    position:fixed; top:16px; right:16px;
+    display:flex; gap:10px; z-index:60;
+  }
+  .dot {
+    width:10px; height:10px; border-radius:50%;
+    background:rgba(255,80,160,0.3);
+    border:1px solid rgba(255,80,160,0.6);
+    transition:all 0.3s ease; cursor:pointer;
+  }
+  .dot.active {
+    background:#ff1474;
+    box-shadow:0 0 15px #ff1474;
+    transform:scale(1.3);
+  }
+
+  #loading {
+    position:fixed; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    flex-direction:column;
+    background:#000; color:#ff5fa2; font-size:14px;
+    letter-spacing:3px; z-index:400;
+    transition:opacity 0.8s ease;
+    font-family:'Courier New', monospace;
+    padding:20px; text-align:center;
+  }
+  #loading.hide { opacity:0; pointer-events:none; }
+  #loadStatus { font-size:10px; margin-top:10px; opacity:0.6; letter-spacing:1px; }
+
+  #rotateHint {
+    position:fixed; bottom:48px; left:50%;
+    transform:translateX(-50%);
+    color:rgba(255,150,200,0.5);
+    font-size:10px; letter-spacing:2px;
+    z-index:50; pointer-events:none;
+    text-align:center; opacity:0;
+    transition:opacity 1s ease;
+    white-space:nowrap;
+  }
+</style>
+</head>
+<body>
+
+<div id="loading">
+  MEMUAT SISTEM...
+  <div id="loadStatus">menghubungi server...</div>
+</div>
+
+<div id="app"></div>
+
+<div id="dots">
+  <div class="dot active" data-i="0"></div>
+  <div class="dot" data-i="1"></div>
+  <div class="dot" data-i="2"></div>
+</div>
+
+<div id="navHint">GESER KE KIRI <span class="arrow">←</span></div>
+<div id="rotateHint">👉 drag untuk putar • pinch untuk zoom</div>
+
+<div id="popup">
+  <div class="popup-box">
+    <div class="popup-title">🔒 AKSES TERKUNCI</div>
+    <div class="popup-sub">// SISTEM RAHASIA V.8.0</div>
+    <div class="popup-lock">🔐</div>
+    <button class="popup-btn" id="unlockBtn">BUKA GALAXY</button>
+  </div>
+</div>
+
+<div id="theme3Title">✦ LOVE ✦</div>
+
+<!-- ===== Three.js dengan MULTI-FALLBACK ===== -->
+<script>
+  // Deteksi WebGL support
+  function hasWebGL() {
+    try {
+      const c = document.createElement('canvas');
+      return !!(window.WebGLRenderingContext &&
+        (c.getContext('webgl') || c.getContext('experimental-webgl')));
+    } catch(e) { return false; }
+  }
+
+  window.__HAS_WEBGL__ = hasWebGL();
+
+  // Loader script berurutan, fallback otomatis
+  (function loadThree() {
+    const status = document.getElementById('loadStatus');
+    const sources = [
+      'https://unpkg.com/three@0.128.0/build/three.min.js',
+      'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js',
+      'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'
+    ];
+    let idx = 0;
+
+    function tryNext() {
+      if (idx >= sources.length) {
+        status.textContent = 'CDN gagal — pakai mode offline Canvas 2D...';
+        window.__THREE_OK__ = false;
+        window.dispatchEvent(new Event('threeReady'));
+        return;
+      }
+      const url = sources[idx++];
+      status.textContent = 'memuat three.js (' + idx + '/' + sources.length + ')...';
+      const s = document.createElement('script');
+      s.src = url;
+      s.onload = function () {
+        if (typeof THREE !== 'undefined') {
+          window.__THREE_OK__ = true;
+          // Load OrbitControls juga
+          loadOrbit();
+        } else {
+          tryNext();
+        }
+      };
+      s.onerror = tryNext;
+      document.head.appendChild(s);
+    }
+
+    function loadOrbit() {
+      const orbitSources = [
+        'https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js',
+        'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js'
+      ];
+      let i = 0;
+      function tryOrbit() {
+        if (i >= orbitSources.length) {
+          window.dispatchEvent(new Event('threeReady'));
+          return;
+        }
+        const s = document.createElement('script');
+        s.src = orbitSources[i++];
+        s.onload = () => window.dispatchEvent(new Event('threeReady'));
+        s.onerror = tryOrbit;
+        document.head.appendChild(s);
+      }
+      tryOrbit();
+    }
+
+    if (!window.__HAS_WEBGL__) {
+      status.textContent = 'WebGL tidak didukung — mode Canvas 2D...';
+      window.__THREE_OK__ = false;
+      setTimeout(() => window.dispatchEvent(new Event('threeReady')), 300);
+    } else {
+      tryNext();
+    }
+  })();
+</script>
+
+<!-- ===== MAIN SCRIPT ===== -->
+<script>
+window.addEventListener('threeReady', function () {
+  const app = document.getElementById('app');
+  const popup = document.getElementById('popup');
+  const navHint = document.getElementById('navHint');
+  const rotateHint = document.getElementById('rotateHint');
+  const dots = document.querySelectorAll('.dot');
+  const theme3Title = document.getElementById('theme3Title');
+  const loadingEl = document.getElementById('loading');
+  const status = document.getElementById('loadStatus');
+
+  let currentTheme = 0;
+  let glitchRunning = false;
+  const USE_THREE = window.__THREE_OK__ && typeof THREE !== 'undefined';
+
+  // ==================================================
+  // JIKA WEBGL/THREE TERSEDIA — 3D MODE
+  // ==================================================
+  if (USE_THREE) {
+    init3D();
+  } else {
+    init2D();
+  }
+
+  // ==================================================
+  // 3D MODE
+  // ==================================================
+  function init3D() {
+    status.textContent = '3D mode aktif';
+
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x000000, 0.02);
+
+    const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 2000);
+    camera.position.set(0, 15, 40);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+    renderer.setClearColor(0x000000, 1);
+    app.appendChild(renderer.domElement);
+
+    let controls = null;
+    if (THREE.OrbitControls) {
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.08;
+      controls.autoRotate = true;
+      controls.autoRotateSpeed = 0.5;
+      controls.enableRotate = true;
+      controls.enableZoom = true;
+      controls.enablePan = false;
+      controls.minDistance = 8;
+      controls.maxDistance = 100;
+      controls.target.set(0, 0, 0);
+    }
+
+    // Glow texture
+    function makeGlowTexture() {
+      const c = document.createElement('canvas');
+      c.width = c.height = 64;
+      const ctx = c.getContext('2d');
+      const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+      g.addColorStop(0, 'rgba(255,255,255,1)');
+      g.addColorStop(0.2, 'rgba(255,150,200,0.9)');
+      g.addColorStop(0.5, 'rgba(255,20,100,0.4)');
+      g.addColorStop(1, 'rgba(255,0,80,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, 64, 64);
+      return new THREE.CanvasTexture(c);
+    }
+    const glowTex = makeGlowTexture();
+
+    // Galaxy builder
+    function buildGalaxy(count, radius, arms) {
+      const geo = new THREE.BufferGeometry();
+      const pos = new Float32Array(count * 3);
+      const col = new Float32Array(count * 3);
+      const inner = new THREE.Color(0xff1e6c);
+      const outer = new THREE.Color(0x6a00ff);
+      const mid = new THREE.Color(0xff77bb);
+
+      for (let i = 0; i < count; i++) {
+        const i3 = i * 3;
+        const r = Math.pow(Math.random(), 1.5) * radius;
+        const armAngle = (i % arms) * (Math.PI * 2 / arms);
+        const spin = r * 0.35;
+        const randA = (Math.random() - 0.5) * 0.8;
+        const angle = armAngle + spin + randA;
+        pos[i3] = Math.cos(angle) * r + (Math.random() - 0.5) * 2;
+        pos[i3 + 1] = (Math.random() - 0.5) * (2 + r * 0.05);
+        pos[i3 + 2] = Math.sin(angle) * r + (Math.random() - 0.5) * 2;
+        const t = r / radius;
+        const c = inner.clone().lerp(mid, t).lerp(outer, t * t);
+        col[i3] = c.r; col[i3 + 1] = c.g; col[i3 + 2] = c.b;
+      }
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      const mat = new THREE.PointsMaterial({
+        size: 0.4, map: glowTex, vertexColors: true,
+        transparent: true, blending: THREE.AdditiveBlending,
+        depthWrite: false, opacity: 0.95
+      });
+      return new THREE.Points(geo, mat);
+    }
+
+    function buildCore(count) {
+      const geo = new THREE.BufferGeometry();
+      const pos = new Float32Array(count * 3);
+      const col = new Float32Array(count * 3);
+      for (let i = 0; i < count; i++) {
+        const i3 = i * 3;
+        const r = Math.pow(Math.random(), 2) * 6;
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(2 * Math.random() - 1);
+        pos[i3] = r * Math.sin(phi) * Math.cos(theta);
+        pos[i3 + 1] = r * Math.cos(phi) * 0.6;
+        pos[i3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+        const c = new THREE.Color().setHSL(0.92 + Math.random() * 0.05, 1, 0.5 + Math.random() * 0.3);
+        col[i3] = c.r; col[i3 + 1] = c.g; col[i3 + 2] = c.b;
+      }
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      const mat = new THREE.PointsMaterial({
+        size: 0.7, map: glowTex, vertexColors: true,
+        transparent: true, blending: THREE.AdditiveBlending, depthWrite: false
+      });
+      return new THREE.Points(geo, mat);
+    }
+
+    // Heart shape
+    function makeHeartShape() {
+      const s = new THREE.Shape();
+      const x = 0, y = 0;
+      s.moveTo(x, y + 0.5);
+      s.bezierCurveTo(x, y + 0.5, x - 0.5, y + 1.2, x - 1.2, y + 1.2);
+      s.bezierCurveTo(x - 2.4, y + 1.2, x - 2.4, y - 0.5, x - 2.4, y - 0.5);
+      s.bezierCurveTo(x - 2.4, y - 1.5, x - 1.2, y - 2.2, x, y - 2.8);
+      s.bezierCurveTo(x + 1.2, y - 2.2, x + 2.4, y - 1.5, x + 2.4, y - 0.5);
+      s.bezierCurveTo(x + 2.4, y - 0.5, x + 2.4, y + 1.2, x + 1.2, y + 1.2);
+      s.bezierCurveTo(x + 0.5, y + 1.2, x, y + 0.5, x, y + 0.5);
+      return s;
+    }
+
+    const heartShape = makeHeartShape();
+    const heartGeo = new THREE.ExtrudeGeometry(heartShape, {
+      depth: 0.4, bevelEnabled: true,
+      bevelSegments: 2, bevelSize: 0.1, bevelThickness: 0.1, curveSegments: 8
+    });
+    heartGeo.center();
+    heartGeo.scale(0.5, 0.5, 0.5);
+
+    function sampleHeartPoints(count) {
+      const posAttr = heartGeo.attributes.position;
+      const arr = posAttr.array;
+      const total = posAttr.count;
+      const out = new Float32Array(count * 3);
+      for (let i = 0; i < count; i++) {
+        const idx = Math.floor(Math.random() * total) * 3;
+        out[i * 3] = arr[idx] + (Math.random() - 0.5) * 0.15;
+        out[i * 3 + 1] = arr[idx + 1] + (Math.random() - 0.5) * 0.15;
+        out[i * 3 + 2] = arr[idx + 2] + (Math.random() - 0.5) * 0.15;
+      }
+      return out;
+    }
+
+    // THEME 1
+    const theme1Group = new THREE.Group();
+    scene.add(theme1Group);
+    const galaxy1 = buildGalaxy(15000, 30, 4);
+    theme1Group.add(galaxy1);
+    const core1 = buildCore(2500);
+    theme1Group.add(core1);
+
+    // bintang
+    const starGeo = new THREE.BufferGeometry();
+    const starCount = 1500;
+    const sPos = new Float32Array(starCount * 3);
+    for (let i = 0; i < starCount; i++) {
+      const i3 = i * 3;
+      const r = 80 + Math.random() * 150;
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      sPos[i3] = r * Math.sin(phi) * Math.cos(theta);
+      sPos[i3 + 1] = r * Math.cos(phi);
+      sPos[i3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+    }
+    starGeo.setAttribute('position', new THREE.BufferAttribute(sPos, 3));
+    const starMat = new THREE.PointsMaterial({
+      size: 0.5, color: 0xffffff, map: glowTex,
+      transparent: true, opacity: 0.6,
+      blending: THREE.AdditiveBlending, depthWrite: false
+    });
+    theme1Group.add(new THREE.Points(starGeo, starMat));
+
+    // Hati melayang
+    const heartGroup = new THREE.Group();
+    theme1Group.add(heartGroup);
+    const heartMeshes = [];
+    const heartMat = new THREE.MeshStandardMaterial({
+      color: 0xff1474, emissive: 0xff1474, emissiveIntensity: 2,
+      metalness: 0.6, roughness: 0.3
+    });
+
+    function spawnHeart() {
+      const mesh = new THREE.Mesh(heartGeo, heartMat.clone());
+      const col = new THREE.Color().setHSL(0.9 + Math.random() * 0.1, 1, 0.55);
+      mesh.material.color = col;
+      mesh.material.emissive = col;
+      const scale = 0.4 + Math.random() * 1.0;
+      mesh.userData = {
+        radius: 4 + Math.random() * 22,
+        angle: Math.random() * Math.PI * 2,
+        ySpeed: 0.3 + Math.random() * 0.8,
+        baseY: (Math.random() - 0.5) * 18,
+        rotSpeed: (Math.random() - 0.5) * 0.05,
+        floatAmp: 1 + Math.random() * 3,
+        birthTime: performance.now() / 1000,
+        lifetime: 6 + Math.random() * 6,
+        maxScale: scale
+      };
+      const d = mesh.userData;
+      mesh.position.set(Math.cos(d.angle) * d.radius, d.baseY, Math.sin(d.angle) * d.radius);
+      mesh.scale.setScalar(0.001);
+      heartGroup.add(mesh);
+      heartMeshes.push(mesh);
+    }
+
+    for (let i = 0; i < 20; i++) {
+      spawnHeart();
+      heartMeshes[heartMeshes.length - 1].userData.birthTime -= Math.random() * 5;
+    }
+    setInterval(() => {
+      if (heartMeshes.length < 40 && currentTheme !== 2) spawnHeart();
+    }, 700);
+
+    // LIGHTS
+    scene.add(new THREE.AmbientLight(0x442244, 1.4));
+    const p1 = new THREE.PointLight(0xff1474, 3, 100);
+    p1.position.set(10, 10, 10);
+    scene.add(p1);
+    const p2 = new THREE.PointLight(0x6a00ff, 3, 100);
+    p2.position.set(-10, -5, -10);
+    scene.add(p2);
+    const centerLight = new THREE.PointLight(0xff77bb, 5, 60);
+    scene.add(centerLight);
+
+    // THEME 3
+    const theme3Group = new THREE.Group();
+    theme3Group.visible = false;
+    scene.add(theme3Group);
+
+    const T3_COUNT = 6000;
+    const t3Geo = new THREE.BufferGeometry();
+    const t3Pos = new Float32Array(T3_COUNT * 3);
+    const t3Target = new Float32Array(T3_COUNT * 3);
+    const t3Start = new Float32Array(T3_COUNT * 3);
+    const t3Col = new Float32Array(T3_COUNT * 3);
+    const t3Phase = new Float32Array(T3_COUNT);
+
+    const heartPts = sampleHeartPoints(T3_COUNT);
+
+    for (let i = 0; i < T3_COUNT; i++) {
+      const i3 = i * 3;
+      const r = 40 + Math.random() * 60;
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      t3Start[i3] = r * Math.sin(phi) * Math.cos(theta);
+      t3Start[i3 + 1] = r * Math.cos(phi);
+      t3Start[i3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+
+      const s = 2.2;
+      t3Target[i3] = heartPts[i3] * s;
+      t3Target[i3 + 1] = heartPts[i3 + 1] * s;
+      t3Target[i3 + 2] = heartPts[i3 + 2] * s;
+
+      t3Pos[i3] = t3Start[i3];
+      t3Pos[i3 + 1] = t3Start[i3 + 1];
+      t3Pos[i3 + 2] = t3Start[i3 + 2];
+
+      const c = new THREE.Color().setHSL(0.9 + Math.random() * 0.1, 1, 0.55 + Math.random() * 0.25);
+      t3Col[i3] = c.r; t3Col[i3 + 1] = c.g; t3Col[i3 + 2] = c.b;
+      t3Phase[i] = Math.random() * 0.4;
+    }
+
+    t3Geo.setAttribute('position', new THREE.BufferAttribute(t3Pos, 3));
+    t3Geo.setAttribute('color', new THREE.BufferAttribute(t3Col, 3));
+    const t3Mat = new THREE.PointsMaterial({
+      size: 0.4, map: glowTex, vertexColors: true,
+      transparent: true, blending: THREE.AdditiveBlending,
+      depthWrite: false, opacity: 0.95
+    });
+    const theme3Points = new THREE.Points(t3Geo, t3Mat);
+    theme3Group.add(theme3Points);
+
+    let theme3Progress = -1;
+    const THEME3_DURATION = 4.5;
+
+    // GLITCH
+    function runGlitch(onDone) {
+      if (glitchRunning) return;
+      glitchRunning = true;
+      const overlay = document.createElement('div');
+      overlay.id = 'glitchOverlay';
+      overlay.innerHTML = `
+        <div class="glitch-code">90007</div>
+        <div class="glitch-text">// SYSTEM ERROR</div>
+        <div class="glitch-bar"></div>
+        <div class="glitch-text" style="margin-top:20px;font-size:11px;">MEMULIHKAN DATA GALAXY...</div>
+      `;
+      document.body.appendChild(overlay);
+      const scan = document.createElement('div');
+      scan.className = 'scanline';
+      document.body.appendChild(scan);
+
+      const codeEl = overlay.querySelector('.glitch-code');
+      const chars = '!@#$%^&*()_+{}|:<>?0123456789ABCDEF';
+      const codeInterval = setInterval(() => {
+        let txt = '';
+        for (let i = 0; i < 5; i++) txt += chars[Math.floor(Math.random() * chars.length)];
+        codeEl.textContent = txt;
+      }, 60);
+
+      let shakeCount = 0;
+      const shakeInt = setInterval(() => {
+        app.style.transform = `translate(${(Math.random() - 0.5) * 8}px, ${(Math.random() - 0.5) * 8}px)`;
+        shakeCount++;
+        if (shakeCount > 30) {
+          clearInterval(shakeInt);
+          app.style.transform = '';
+        }
+      }, 40);
+
+      setTimeout(() => {
+        clearInterval(codeInterval);
+        overlay.style.transition = 'opacity 0.6s ease';
+        overlay.style.opacity = '0';
+        scan.style.transition = 'opacity 0.6s ease';
+        scan.style.opacity = '0';
+        setTimeout(() => {
+          overlay.remove();
+          scan.remove();
+          glitchRunning = false;
+          if (onDone) onDone();
+        }, 600);
+      }, 2200);
+    }
+
+    function goToTheme(n) {
+      if (n === currentTheme) return;
+      currentTheme = n;
+      dots.forEach((d, i) => d.classList.toggle('active', i === n));
+      theme1Group.visible = (n === 0 || n === 1);
+      theme3Group.visible = (n === 2);
+
+      if (n === 2) theme3Title.classList.add('show');
+      else theme3Title.classList.remove('show');
+
+      if (n === 2) {
+        theme3Progress = 0;
+        const posArr = t3Geo.attributes.position.array;
+        for (let i = 0; i < T3_COUNT * 3; i++) posArr[i] = t3Start[i];
+        t3Geo.attributes.position.needsUpdate = true;
+        navHint.classList.remove('show');
+        rotateHint.style.opacity = '0';
+      } else {
+        navHint.classList.add('show');
+        rotateHint.style.opacity = '1';
+      }
+      if (controls) controls.autoRotateSpeed = (n === 2) ? 0.15 : 0.5;
+    }
+
+    // Input
+    let touchStartX = 0, touchStartY = 0, lastSwitchTime = 0;
+    const COOLDOWN = 1200, SWIPE = 60;
+
+    renderer.domElement.addEventListener('wheel', (e) => {
+      const dx = e.deltaX, dy = e.deltaY;
+      const now = performance.now();
+      if (now - lastSwitchTime < COOLDOWN) return;
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 20) {
+        if (dx > 0) goToTheme(Math.min(2, currentTheme + 1));
+        else goToTheme(Math.max(0, currentTheme - 1));
+        lastSwitchTime = now;
+      }
+    }, { passive: true });
+
+    renderer.domElement.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+
+    renderer.domElement.addEventListener('touchend', (e) => {
+      if (e.changedTouches.length !== 1) return;
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = e.changedTouches[0].clientY - touchStartY;
+      const now = performance.now();
+      if (now - lastSwitchTime < COOLDOWN) return;
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > SWIPE) {
+        if (dx < 0) goToTheme(Math.min(2, currentTheme + 1));
+        else goToTheme(Math.max(0, currentTheme - 1));
+        lastSwitchTime = now;
+      }
+    }, { passive: true });
+
+    addEventListener('keydown', (e) => {
+      const now = performance.now();
+      if (now - lastSwitchTime < COOLDOWN) return;
+      if (e.key === 'ArrowRight') { goToTheme(Math.min(2, currentTheme + 1)); lastSwitchTime = now; }
+      if (e.key === 'ArrowLeft') { goToTheme(Math.max(0, currentTheme - 1)); lastSwitchTime = now; }
+    });
+
+    dots.forEach((d, i) => d.addEventListener('click', () => goToTheme(i)));
+
+    document.getElementById('unlockBtn').addEventListener('click', () => {
+      popup.classList.add('hidden');
+      runGlitch(() => {
+        goToTheme(0);
+        navHint.classList.add('show');
+        rotateHint.style.opacity = '1';
+      });
+    });
+
+    // ANIMATE
+    const clock = new THREE.Clock();
+    function animate() {
+      requestAnimationFrame(animate);
+      const t = clock.getElapsedTime();
+      const now = performance.now() / 1000;
+
+      if (theme1Group.visible) {
+        galaxy1.rotation.y += 0.0015;
+        core1.rotation.y -= 0.003;
+        core1.scale.setScalar(1 + Math.sin(t * 2) * 0.1);
+        centerLight.intensity = 4 + Math.sin(t * 2.5) * 2;
+
+        for (let i = heartMeshes.length - 1; i
